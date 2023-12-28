@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Ast.fs" />
+        <Compile Include="GenericGenerator.fs" />
+        <Compile Include="JsonGenerator.fs" />
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FSharp.Compiler.Service" Version="43.8.100" />
+    </ItemGroup>
+
+</Project>
