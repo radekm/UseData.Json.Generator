@@ -6,7 +6,7 @@ open FSharp.Compiler.Text
 
 let processFile (checker : FSharpChecker) (path : string) =
     let processTypeDeclaration =
-        GenericGenerator.processTypeDeclaration (Ast.extractFieldsOrCases >> JsonGenerator.run) checker
+        GenericGenerator.processTypeDeclaration (Ast.extractTypeInfo >> JsonGenerator.run) checker
 
     let output = ResizeArray<string>()
     let input = File.ReadAllText path

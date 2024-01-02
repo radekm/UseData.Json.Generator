@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="AstTest.fs" />
         <Compile Include="GenericGeneratorTest.fs" />
+        <Compile Include="JsonGeneratorTest.fs" />
     </ItemGroup>
 
     <ItemGroup>

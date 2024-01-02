@@ -20,7 +20,7 @@ let ``record fields are extracted`` () =
     let checker = FSharpChecker.Create()
     let sourceText = SourceText.ofString ``input - record``
     let expected =
-        Ast.Record [
+        Ast.Record ("Hello", [
             { Name = "Foo"; Type = Ast.JIdent ["int"] }
             { Name = "Bar"; Type = Ast.JIdent ["string"] }
             { Name = "OneParam"; Type = Ast.JApp (Ast.JIdent ["ResizeArray"], [Ast.JIdent ["string"]]) }
@@ -31,8 +31,8 @@ let ``record fields are extracted`` () =
                                [Ast.JApp (Ast.JIdent ["list"],
                                           [Ast.JApp (Ast.JIdent ["option"], [Ast.JIdent ["int"]])])]) }
             { Name = "Array"; Type = Ast.JArray (Ast.JIdent ["int"]) }
-        ]
+        ])
     let actual =
         Ast.getUntypedTree checker "Temp.fsx" sourceText
-        |> Ast.extractFieldsOrCases
+        |> Ast.extractTypeInfo
     Assert.That(actual, Is.EqualTo(expected))

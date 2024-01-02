@@ -32,16 +32,20 @@ type SimpleType =
     // TODO: Handle unions and enums.
     // | Union of UnionCase list
     // | Enum of EnumCase list
-    | Record of RecordField list
+    | Record of name:string * fields:RecordField list
 
 /// `input` is a parsed file containing exactly a single type.
-let extractFieldsOrCases (input : ParsedInput) : SimpleType =
+let extractTypeInfo (input : ParsedInput) : SimpleType =
     match input with
     | ParsedInput.ImplFile x ->
         match x.Contents with
         | [SynModuleOrNamespace (_, _, _, [SynModuleDecl.Types ([typeDefn], _)], _, _, _, _, _)] ->
             match typeDefn with
-            | SynTypeDefn (_, SynTypeDefnRepr.Simple (simpleRepr, _), _, _, _, _) ->
+            | SynTypeDefn (typeInfo, SynTypeDefnRepr.Simple (simpleRepr, _), _, _, _, _) ->
+                let name =
+                    match typeInfo with
+                    | SynComponentInfo (_, _, _, [name], _, _, _, _) -> name.idText
+                    | _ -> failwithf "Expected type name with single component: %A" typeInfo
                 match simpleRepr with
                 | SynTypeDefnSimpleRepr.Union(_, unionCases, _) ->
                     failwithf "Unions are not yet implemented: %A" unionCases
@@ -54,7 +58,7 @@ let extractFieldsOrCases (input : ParsedInput) : SimpleType =
                             match name with
                             | None -> failwith "Record field without name"
                             | Some name -> { Name = name.idText; Type = JType.FromSynType tpe })
-                    |> Record
+                    |> fun fields -> Record (name, fields)
                 | _ -> failwith "Expected union or enum or record"
             | _ -> failwith "Expected simple type"
         | _ -> failwith "Expected single type declaration"
