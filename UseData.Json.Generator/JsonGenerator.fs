@@ -3,7 +3,10 @@ module JsonGenerator
 let parseSingleValue (longIdent : string list) =
     match longIdent with
     | ["string"] -> "UJson.string"
-    | ["DateTimeOffset"] -> "UJson.dateTimeOffset"
+    // `UJson.dateTimeOffset` is unable to parse `DateTimeOffset` serialized by `System.Text.Json`.
+    | ["DateTimeOffset"] ->
+        let parse = "fun s -> DateTimeOffset.Parse(s, System.Globalization.CultureInfo.InvariantCulture)"
+        $"(UJson.string >> %s{parse})"
     | ["int"] -> "UJson.int"
     | ["uint"] -> "UJson.uint"
     | ["int64"] -> "UJson.int64"
