@@ -28,3 +28,17 @@ let ``record with optional fields`` () =
         |]
     let actual = JsonGenerator.run input
     Assert.That(actual, Is.EqualTo(expected))
+
+
+[<Test>]
+let ``record with list and array fields`` () =
+    let input = Ast.Record ("Foo", [ { Name = "Bar"; Type = Ast.JApp (Ast.JIdent ["list"], [Ast.JIdent ["int64"]]) }
+                                     { Name = "Baz"; Type = Ast.JArray (Ast.JIdent ["DateTimeOffset"]) } ])
+    let expected =
+        [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
+           "    { Bar = v |> UJson.field \"Bar\" (UJson.map UJson.int64) |> Array.toList"
+           "      Baz = v |> UJson.field \"Baz\" (UJson.map UJson.dateTimeOffset)"
+           "    }"
+        |]
+    let actual = JsonGenerator.run input
+    Assert.That(actual, Is.EqualTo(expected))

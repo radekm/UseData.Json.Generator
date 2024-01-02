@@ -20,6 +20,10 @@ let parseRecordField (field : Ast.RecordField) : string =
     | Ast.JApp (Ast.JIdent ["option"], [Ast.JIdent longIdent]) ->
         let convert = "function ValueNone -> None | ValueSome x -> Some x"
         $"v |> UJson.fieldOpt \"%s{field.Name}\" %s{parseSingleValue longIdent} |> %s{convert}"
+    | Ast.JApp (Ast.JIdent ["list"], [Ast.JIdent longIdent]) ->
+        $"v |> UJson.field \"%s{field.Name}\" (UJson.map %s{parseSingleValue longIdent}) |> Array.toList"
+    | Ast.JArray (Ast.JIdent longIdent) ->
+        $"v |> UJson.field \"%s{field.Name}\" (UJson.map %s{parseSingleValue longIdent})"
     | _ -> failwithf "Field %s has unsupported type: %A" field.Name field.Type
 
 let generateRecordParser (fields : Ast.RecordField list) = seq {
