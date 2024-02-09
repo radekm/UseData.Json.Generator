@@ -1,6 +1,6 @@
 module JsonGenerator
 
-let parseSingleValue (longIdent : string list) =
+let parseSimpleType (longIdent : string list) =
     match longIdent with
     | ["string"] -> "UJson.string"
     // `UJson.dateTimeOffset` is unable to parse `DateTimeOffset` serialized by `System.Text.Json`.
@@ -15,19 +15,31 @@ let parseSingleValue (longIdent : string list) =
     | ["bool"] -> "UJson.bool"
     | x -> x |> String.concat "." |> fun tpe -> tpe + ".ParseJson"
 
+let rec parseNonOptionType (t : Ast.JType) =
+    match t with
+    | Ast.JIdent longIdent -> parseSimpleType longIdent
+    | Ast.JApp (Ast.JIdent ["list"], [t]) ->
+        $"((UJson.map %s{parseAnyType t}) |> Array.toList)"
+    | Ast.JArray (t) ->
+        $"(UJson.map %s{parseAnyType t})"
+    | _ -> failwithf "Unsupported non-option type: %A" t
+
+and parseAnyType (t : Ast.JType) =
+    match t with
+    | Ast.JApp (Ast.JIdent ["voption"], [t]) -> $"(UJson.nullable %s{parseNonOptionType t})"
+    | Ast.JApp (Ast.JIdent ["option"], [t]) ->
+        let convert = "function ValueNone -> None | ValueSome x -> Some x"
+        $"(UJson.nullable %s{parseNonOptionType t} |> %s{convert})"
+    | _ -> parseNonOptionType t
+
 let parseRecordField (field : Ast.RecordField) : string =
     match field.Type with
-    | Ast.JIdent longIdent -> $"v |> UJson.field \"%s{field.Name}\" %s{parseSingleValue longIdent}"
-    | Ast.JApp (Ast.JIdent ["voption"], [Ast.JIdent longIdent]) ->
-        $"v |> UJson.fieldOpt \"%s{field.Name}\" %s{parseSingleValue longIdent}"
-    | Ast.JApp (Ast.JIdent ["option"], [Ast.JIdent longIdent]) ->
+    | Ast.JApp (Ast.JIdent ["voption"], [t]) ->
+        $"v |> UJson.fieldOpt \"%s{field.Name}\" %s{parseNonOptionType t}"
+    | Ast.JApp (Ast.JIdent ["option"], [t]) ->
         let convert = "function ValueNone -> None | ValueSome x -> Some x"
-        $"v |> UJson.fieldOpt \"%s{field.Name}\" %s{parseSingleValue longIdent} |> %s{convert}"
-    | Ast.JApp (Ast.JIdent ["list"], [Ast.JIdent longIdent]) ->
-        $"v |> UJson.field \"%s{field.Name}\" (UJson.map %s{parseSingleValue longIdent}) |> Array.toList"
-    | Ast.JArray (Ast.JIdent longIdent) ->
-        $"v |> UJson.field \"%s{field.Name}\" (UJson.map %s{parseSingleValue longIdent})"
-    | _ -> failwithf "Field %s has unsupported type: %A" field.Name field.Type
+        $"v |> UJson.fieldOpt \"%s{field.Name}\" %s{parseNonOptionType t} |> %s{convert}"
+    | t -> $"v |> UJson.field \"%s{field.Name}\" %s{parseNonOptionType t}"
 
 let generateRecordParser (fields : Ast.RecordField list) = seq {
     if fields.IsEmpty then
