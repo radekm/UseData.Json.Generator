@@ -29,8 +29,8 @@ type RecordField = { Name : string
                      Type : JType }
 
 type SimpleType =
-    // TODO: Handle unions and enums.
-    // | Union of UnionCase list
+    | Union of  name:string * cases:UnionCase list
+    // TODO: Handle enums.
     // | Enum of EnumCase list
     | Record of name:string * fields:RecordField list
 
@@ -48,7 +48,16 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                     | _ -> failwithf "Expected type name with single component: %A" typeInfo
                 match simpleRepr with
                 | SynTypeDefnSimpleRepr.Union(_, unionCases, _) ->
-                    failwithf "Unions are not yet implemented: %A" unionCases
+                    unionCases
+                    |> List.map (function
+                        | SynUnionCase (_, SynIdent (ident, None), SynUnionCaseKind.Fields fields, _, _, _, _) ->
+                            let types =
+                                fields
+                                |> List.map (function
+                                    | SynField (_, _, _, tpe, _, _, _, _, _) -> JType.FromSynType tpe)
+                            { Name = ident.idText; Types = types }
+                        | case -> failwithf "Union cases like this are not supported: %A" case)
+                    |> fun cases -> Union (name, cases)
                 | SynTypeDefnSimpleRepr.Enum(enumCases, _) ->
                     failwithf "Enums are not yet implemented: %A" enumCases
                 | SynTypeDefnSimpleRepr.Record (_, recordFields, _) ->

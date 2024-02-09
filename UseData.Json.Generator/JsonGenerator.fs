@@ -57,6 +57,8 @@ let generateRecordParser (fields : Ast.RecordField list) = seq {
 
 let run (simpleType : Ast.SimpleType) =
     match simpleType with
+    | Ast.Union (name, cases) ->
+        failwithf "Unions are not yet implemented but found %s: %A" name cases
     | Ast.Record (name, fields) ->
         Array.append
             [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]

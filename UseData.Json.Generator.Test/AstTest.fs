@@ -36,3 +36,64 @@ let ``record fields are extracted`` () =
         Ast.getUntypedTree checker "Temp.fsx" sourceText
         |> Ast.extractTypeInfo
     Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - union without associated data`` = """
+type Hello =
+    | Foo
+    | Bar
+"""
+
+[<Test>]
+let ``union cases are extracted - without associated data`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - union without associated data``
+    let expected =
+        Ast.Union ("Hello", [
+            { Name = "Foo"; Types = [] }
+            { Name = "Bar"; Types = [] }
+        ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - union with associated data`` = """
+type Node =
+    | Leaf of int
+    | Fork of Node * Node
+"""
+
+[<Test>]
+let ``union cases are extracted - with associated data`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - union with associated data``
+    let expected =
+        Ast.Union ("Node", [
+            { Name = "Leaf"; Types = [Ast.JIdent ["int"]] }
+            { Name = "Fork"; Types = [Ast.JIdent ["Node"]; Ast.JIdent ["Node"]] }
+        ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - union with associated data with labels`` = """
+type Node =
+    | Leaf of data:int
+    | Fork of left:Node * right:Node
+"""
+
+[<Test>]
+let ``union cases are extracted - with associated data with labels`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - union with associated data with labels``
+    // Same result as without labels.
+    let expected =
+        Ast.Union ("Node", [
+            { Name = "Leaf"; Types = [Ast.JIdent ["int"]] }
+            { Name = "Fork"; Types = [Ast.JIdent ["Node"]; Ast.JIdent ["Node"]] }
+        ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
