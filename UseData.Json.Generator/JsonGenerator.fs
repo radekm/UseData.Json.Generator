@@ -55,10 +55,30 @@ let generateRecordParser (fields : Ast.RecordField list) = seq {
     yield "    }"
 }
 
+let parseUnionCase (case : Ast.UnionCase) : string =
+    match case.Types with
+    | [] -> case.Name  // Case has no associated data so there's no field `Fields` in JSON.
+    | types ->
+        let parseTuple =
+            let parts = types |> List.map parseAnyType |> String.concat " "
+            $"(UJson.tuple%d{types.Length} %s{parts})"
+        $"v |> UJson.field \"Fields\" %s{parseTuple} |> %s{case.Name}"
+
+let generateUnionParser (name : string) (cases : Ast.UnionCase list) = seq {
+    if cases.IsEmpty then
+        failwith "Union has no cases"
+    yield "    match v |> UJson.field \"Case\" UJson.string with"
+    for case in cases do
+        yield $"    | \"%s{case.Name}\" -> %s{parseUnionCase case}"
+    yield $"    | case -> failwithf \"Unrecognized case '%%s' in union %s{name}\" case"
+}
+
 let run (simpleType : Ast.SimpleType) =
     match simpleType with
     | Ast.Union (name, cases) ->
-        failwithf "Unions are not yet implemented but found %s: %A" name cases
+        Array.append
+            [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]
+            (generateUnionParser name cases |> Array.ofSeq)
     | Ast.Record (name, fields) ->
         Array.append
             [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]

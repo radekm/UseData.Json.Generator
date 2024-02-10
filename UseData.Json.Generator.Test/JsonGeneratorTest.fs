@@ -60,3 +60,31 @@ let ``record with optional array of optional values`` () =
         |]
     let actual = JsonGenerator.run input
     Assert.That(actual, Is.EqualTo(expected))
+
+[<Test>]
+let ``union without associated data`` () =
+    let input = Ast.Union ("Foo", [ { Name = "Bar"; Types = [] }
+                                    { Name = "Baz"; Types = [] } ])
+    let expected =
+        [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
+           "    match v |> UJson.field \"Case\" UJson.string with"
+           "    | \"Bar\" -> Bar"
+           "    | \"Baz\" -> Baz"
+           "    | case -> failwithf \"Unrecognized case '%s' in union Foo\" case"
+        |]
+    let actual = JsonGenerator.run input
+    Assert.That(actual, Is.EqualTo(expected))
+
+[<Test>]
+let ``union with associated data`` () =
+    let input = Ast.Union ("Foo", [ { Name = "Bar"; Types = [] }
+                                    { Name = "Baz"; Types = [Ast.JIdent ["int"]] } ])
+    let expected =
+        [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
+           "    match v |> UJson.field \"Case\" UJson.string with"
+           "    | \"Bar\" -> Bar"
+           "    | \"Baz\" -> v |> UJson.field \"Fields\" (UJson.tuple1 UJson.int) |> Baz"
+           "    | case -> failwithf \"Unrecognized case '%s' in union Foo\" case"
+        |]
+    let actual = JsonGenerator.run input
+    Assert.That(actual, Is.EqualTo(expected))
