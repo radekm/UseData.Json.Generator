@@ -20,7 +20,7 @@ let ``record fields are extracted`` () =
     let checker = FSharpChecker.Create()
     let sourceText = SourceText.ofString ``input - record``
     let expected =
-        Ast.Record ("Hello", [
+        Ast.Record ("Hello", [], [
             { Name = "Foo"; Type = Ast.JIdent ["int"] }
             { Name = "Bar"; Type = Ast.JIdent ["string"] }
             { Name = "OneParam"; Type = Ast.JApp (Ast.JIdent ["ResizeArray"], [Ast.JIdent ["string"]]) }
@@ -48,7 +48,7 @@ let ``union cases are extracted - without associated data`` () =
     let checker = FSharpChecker.Create()
     let sourceText = SourceText.ofString ``input - union without associated data``
     let expected =
-        Ast.Union ("Hello", [
+        Ast.Union ("Hello", [], [
             { Name = "Foo"; Types = [] }
             { Name = "Bar"; Types = [] }
         ])
@@ -68,7 +68,7 @@ let ``union cases are extracted - with associated data`` () =
     let checker = FSharpChecker.Create()
     let sourceText = SourceText.ofString ``input - union with associated data``
     let expected =
-        Ast.Union ("Node", [
+        Ast.Union ("Node", [], [
             { Name = "Leaf"; Types = [Ast.JIdent ["int"]] }
             { Name = "Fork"; Types = [Ast.JIdent ["Node"]; Ast.JIdent ["Node"]] }
         ])
@@ -89,9 +89,53 @@ let ``union cases are extracted - with associated data with labels`` () =
     let sourceText = SourceText.ofString ``input - union with associated data with labels``
     // Same result as without labels.
     let expected =
-        Ast.Union ("Node", [
+        Ast.Union ("Node", [], [
             { Name = "Leaf"; Types = [Ast.JIdent ["int"]] }
             { Name = "Fork"; Types = [Ast.JIdent ["Node"]; Ast.JIdent ["Node"]] }
+        ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - generic union with associated data`` = """
+type Node<'T> =
+    | Leaf of 'T
+    | Fork of Node<'T> * Node<'T>
+"""
+
+[<Test>]
+let ``generic union cases are extracted - with associated data`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - generic union with associated data``
+    let expected =
+        Ast.Union ("Node", ["T"], [
+            { Name = "Leaf"; Types = [Ast.JVar "T"] }
+            { Name = "Fork"
+              Types =
+                  let node = Ast.JApp (Ast.JIdent ["Node"], [Ast.JVar "T"])
+                  [node; node] }
+        ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - generic record with two generic parameters`` = """
+type KeyValue<'K, 'V> =
+    { Key : 'K
+      Value : 'V
+    }
+"""
+
+[<Test>]
+let ``generic record fields are extracted - with two generic parameters`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - generic record with two generic parameters``
+    let expected =
+        Ast.Record ("KeyValue", ["K"; "V"], [
+            { Name = "Key"; Type = Ast.JVar "K" }
+            { Name = "Value"; Type = Ast.JVar "V" }
         ])
     let actual =
         Ast.getUntypedTree checker "Temp.fsx" sourceText

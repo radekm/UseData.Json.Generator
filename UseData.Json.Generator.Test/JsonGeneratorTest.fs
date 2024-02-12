@@ -6,8 +6,8 @@ open NUnit.Framework
 
 [<Test>]
 let ``simple record`` () =
-    let input = Ast.Record ("Person", [ { Name = "Name"; Type = Ast.JIdent ["string"] }
-                                        { Name = "Age"; Type = Ast.JIdent ["int"] } ])
+    let input = Ast.Record ("Person", [], [ { Name = "Name"; Type = Ast.JIdent ["string"] }
+                                            { Name = "Age"; Type = Ast.JIdent ["int"] } ])
     let expected = [| "static member ParseJson(v : UseData.Json.JsonValue) : Person ="
                       "    { Name = v |> UJson.field \"Name\" UJson.string"
                       "      Age = v |> UJson.field \"Age\" UJson.int"
@@ -18,8 +18,10 @@ let ``simple record`` () =
 
 [<Test>]
 let ``record with optional fields`` () =
-    let input = Ast.Record ("Foo", [ { Name = "Bar"; Type = Ast.JApp (Ast.JIdent ["voption"], [Ast.JIdent ["bool"]]) }
-                                     { Name = "Baz"; Type = Ast.JApp (Ast.JIdent ["option"], [Ast.JIdent ["int"]]) } ])
+    let input = Ast.Record ("Foo",
+                            [],
+                            [ { Name = "Bar"; Type = Ast.JApp (Ast.JIdent ["voption"], [Ast.JIdent ["bool"]]) }
+                              { Name = "Baz"; Type = Ast.JApp (Ast.JIdent ["option"], [Ast.JIdent ["int"]]) } ])
     let expected =
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
            "    { Bar = v |> UJson.fieldOpt \"Bar\" UJson.bool"
@@ -32,8 +34,10 @@ let ``record with optional fields`` () =
 
 [<Test>]
 let ``record with list and array fields`` () =
-    let input = Ast.Record ("Foo", [ { Name = "Bar"; Type = Ast.JApp (Ast.JIdent ["list"], [Ast.JIdent ["int64"]]) }
-                                     { Name = "Baz"; Type = Ast.JArray (Ast.JIdent ["DateTimeOffset"]) } ])
+    let input = Ast.Record ("Foo",
+                            [],
+                            [ { Name = "Bar"; Type = Ast.JApp (Ast.JIdent ["list"], [Ast.JIdent ["int64"]]) }
+                              { Name = "Baz"; Type = Ast.JArray (Ast.JIdent ["DateTimeOffset"]) } ])
     let parseDateTimeOffset = "fun s -> DateTimeOffset.Parse(s, System.Globalization.CultureInfo.InvariantCulture)"
     let expected =
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
@@ -46,12 +50,12 @@ let ``record with list and array fields`` () =
 
 [<Test>]
 let ``record with optional array of optional values`` () =
-    let input = Ast.Record ("Foo", [ { Name = "Baz"
-                                       Type =
-                                           Ast.JApp (Ast.JIdent ["voption"],
-                                                     [Ast.JArray (Ast.JApp (Ast.JIdent ["option"],
-                                                                            [Ast.JIdent ["int"]]))]) }
-                                   ])
+    let input = Ast.Record ("Foo", [], [ { Name = "Baz"
+                                           Type =
+                                               Ast.JApp (Ast.JIdent ["voption"],
+                                                         [Ast.JArray (Ast.JApp (Ast.JIdent ["option"],
+                                                                                [Ast.JIdent ["int"]]))]) }
+                                       ])
     let expected =
         let convert = "function ValueNone -> None | ValueSome x -> Some x"
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
@@ -63,8 +67,8 @@ let ``record with optional array of optional values`` () =
 
 [<Test>]
 let ``union without associated data`` () =
-    let input = Ast.Union ("Foo", [ { Name = "Bar"; Types = [] }
-                                    { Name = "Baz"; Types = [] } ])
+    let input = Ast.Union ("Foo", [], [ { Name = "Bar"; Types = [] }
+                                        { Name = "Baz"; Types = [] } ])
     let expected =
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
            "    match v |> UJson.field \"Case\" UJson.string with"
@@ -77,8 +81,8 @@ let ``union without associated data`` () =
 
 [<Test>]
 let ``union with associated data`` () =
-    let input = Ast.Union ("Foo", [ { Name = "Bar"; Types = [] }
-                                    { Name = "Baz"; Types = [Ast.JIdent ["int"]] } ])
+    let input = Ast.Union ("Foo", [], [ { Name = "Bar"; Types = [] }
+                                        { Name = "Baz"; Types = [Ast.JIdent ["int"]] } ])
     let expected =
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
            "    match v |> UJson.field \"Case\" UJson.string with"

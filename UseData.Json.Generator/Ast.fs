@@ -6,12 +6,14 @@ open FSharp.Compiler.Text
 
 type JType =
     | JIdent of longIdent:string list
+    | JVar of string
     | JApp of generic:JType * args:JType list
     | JArray of element:JType
 
     static member FromSynType(t : SynType) =
         match t with
         | SynType.LongIdent (SynLongIdent (longIdent, _, _)) -> JIdent (longIdent |> List.map _.idText)
+        | SynType.Var (SynTypar (ident, _, _), _) -> JVar ident.idText
         | SynType.App (generic, _, args, _, _, _, _) ->
             JApp (JType.FromSynType generic, args |> List.map JType.FromSynType)
         | SynType.Array (rank, element, _) ->
@@ -29,10 +31,10 @@ type RecordField = { Name : string
                      Type : JType }
 
 type SimpleType =
-    | Union of  name:string * cases:UnionCase list
+    | Union of name:string * typeVars:string list * cases:UnionCase list
     // TODO: Handle enums.
     // | Enum of EnumCase list
-    | Record of name:string * fields:RecordField list
+    | Record of name:string * typeVars:string list * fields:RecordField list
 
 /// `input` is a parsed file containing exactly a single type.
 let extractTypeInfo (input : ParsedInput) : SimpleType =
@@ -42,9 +44,17 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
         | [SynModuleOrNamespace (_, _, _, [SynModuleDecl.Types ([typeDefn], _)], _, _, _, _, _)] ->
             match typeDefn with
             | SynTypeDefn (typeInfo, SynTypeDefnRepr.Simple (simpleRepr, _), _, _, _, _) ->
-                let name =
+                let name, typeVars =
                     match typeInfo with
-                    | SynComponentInfo (_, _, _, [name], _, _, _, _) -> name.idText
+                    | SynComponentInfo (_, typeVars, _, [name], _, _, _, _) ->
+                        let typeVars =
+                            match typeVars with
+                            | None -> []
+                            | Some (SynTyparDecls.PostfixList (decls, _, _)) ->
+                                decls
+                                |> List.map (fun (SynTyparDecl (_, SynTypar (ident, _, _), _, _)) -> ident.idText)
+                            | Some _ -> failwithf "Unsupported form of type variable declaration: %A" typeVars
+                        name.idText, typeVars
                     | _ -> failwithf "Expected type name with single component: %A" typeInfo
                 match simpleRepr with
                 | SynTypeDefnSimpleRepr.Union(_, unionCases, _) ->
@@ -57,7 +67,7 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                                     | SynField (_, _, _, tpe, _, _, _, _, _) -> JType.FromSynType tpe)
                             { Name = ident.idText; Types = types }
                         | case -> failwithf "Union cases like this are not supported: %A" case)
-                    |> fun cases -> Union (name, cases)
+                    |> fun cases -> Union (name, typeVars, cases)
                 | SynTypeDefnSimpleRepr.Enum(enumCases, _) ->
                     failwithf "Enums are not yet implemented: %A" enumCases
                 | SynTypeDefnSimpleRepr.Record (_, recordFields, _) ->
@@ -67,7 +77,7 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                             match name with
                             | None -> failwith "Record field without name"
                             | Some name -> { Name = name.idText; Type = JType.FromSynType tpe })
-                    |> fun fields -> Record (name, fields)
+                    |> fun fields -> Record (name, typeVars, fields)
                 | _ -> failwith "Expected union or enum or record"
             | _ -> failwith "Expected simple type"
         | _ -> failwith "Expected single type declaration"

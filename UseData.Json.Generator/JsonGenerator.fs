@@ -75,11 +75,12 @@ let generateUnionParser (name : string) (cases : Ast.UnionCase list) = seq {
 
 let run (simpleType : Ast.SimpleType) =
     match simpleType with
-    | Ast.Union (name, cases) ->
+    | Ast.Union (name, [], cases) ->
         Array.append
             [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]
             (generateUnionParser name cases |> Array.ofSeq)
-    | Ast.Record (name, fields) ->
+    | Ast.Record (name, [], fields) ->
         Array.append
             [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]
             (generateRecordParser fields |> Array.ofSeq)
+    | _ -> failwith "Type variables are currently not supported in generator"
