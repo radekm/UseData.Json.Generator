@@ -41,7 +41,7 @@ let ``record with list and array fields`` () =
     let parseDateTimeOffset = "fun s -> DateTimeOffset.Parse(s, System.Globalization.CultureInfo.InvariantCulture)"
     let expected =
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
-           "    { Bar = v |> UJson.field \"Bar\" ((UJson.map UJson.int64) |> Array.toList)"
+           "    { Bar = v |> UJson.field \"Bar\" ((UJson.map UJson.int64) >> Array.toList)"
            $"      Baz = v |> UJson.field \"Baz\" (UJson.map (UJson.string >> %s{parseDateTimeOffset}))"
            "    }"
         |]
@@ -59,7 +59,7 @@ let ``record with optional array of optional values`` () =
     let expected =
         let convert = "function ValueNone -> None | ValueSome x -> Some x"
         [| "static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
-           $"    {{ Baz = v |> UJson.fieldOpt \"Baz\" (UJson.map (UJson.nullable UJson.int |> %s{convert}))"
+           $"    {{ Baz = v |> UJson.fieldOpt \"Baz\" (UJson.map (UJson.nullable UJson.int >> %s{convert}))"
            "    }"
         |]
     let actual = JsonGenerator.run input

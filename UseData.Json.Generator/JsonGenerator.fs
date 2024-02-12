@@ -22,7 +22,7 @@ let rec parseNonOptionType (t : Ast.JType) =
     | Ast.JArray (t) ->
         $"(UJson.map %s{parseAnyType t})"
     | Ast.JApp (Ast.JIdent ["list"], [t]) ->
-        $"((UJson.map %s{parseAnyType t}) |> Array.toList)"
+        $"((UJson.map %s{parseAnyType t}) >> Array.toList)"
     | Ast.JApp (Ast.JIdent ["voption"], [_])
     | Ast.JApp (Ast.JIdent ["option"], [_]) -> failwithf "Option types are not supported: %A" t
     // Other generic types.
@@ -37,7 +37,7 @@ and parseAnyType (t : Ast.JType) =
     | Ast.JApp (Ast.JIdent ["voption"], [t]) -> $"(UJson.nullable %s{parseNonOptionType t})"
     | Ast.JApp (Ast.JIdent ["option"], [t]) ->
         let convert = "function ValueNone -> None | ValueSome x -> Some x"
-        $"(UJson.nullable %s{parseNonOptionType t} |> %s{convert})"
+        $"(UJson.nullable %s{parseNonOptionType t} >> %s{convert})"
     | _ -> parseNonOptionType t
 
 let parseRecordField (field : Ast.RecordField) : string =
