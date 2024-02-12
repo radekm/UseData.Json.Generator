@@ -7,6 +7,9 @@ let parseSimpleType (longIdent : string list) =
     | ["DateTimeOffset"] ->
         let parse = "fun s -> DateTimeOffset.Parse(s, System.Globalization.CultureInfo.InvariantCulture)"
         $"(UJson.string >> %s{parse})"
+    | ["DateOnly"] ->
+        let parse = "fun s -> DateOnly.Parse(s, System.Globalization.CultureInfo.InvariantCulture)"
+        $"(UJson.string >> %s{parse})"
     | ["int"] -> "UJson.int"
     | ["uint"] -> "UJson.uint"
     | ["int64"] -> "UJson.int64"
