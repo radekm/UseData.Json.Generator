@@ -18,10 +18,18 @@ let parseSimpleType (longIdent : string list) =
 let rec parseNonOptionType (t : Ast.JType) =
     match t with
     | Ast.JIdent longIdent -> parseSimpleType longIdent
-    | Ast.JApp (Ast.JIdent ["list"], [t]) ->
-        $"((UJson.map %s{parseAnyType t}) |> Array.toList)"
+    | Ast.JVar v -> $"parserFor%s{v}"
     | Ast.JArray (t) ->
         $"(UJson.map %s{parseAnyType t})"
+    | Ast.JApp (Ast.JIdent ["list"], [t]) ->
+        $"((UJson.map %s{parseAnyType t}) |> Array.toList)"
+    | Ast.JApp (Ast.JIdent ["voption"], [_])
+    | Ast.JApp (Ast.JIdent ["option"], [_]) -> failwithf "Option types are not supported: %A" t
+    // Other generic types.
+    | Ast.JApp (Ast.JIdent longIdent, types) ->
+        let make = longIdent |> String.concat "." |> fun tpe -> tpe + ".MakeJsonParser"
+        let args = types |> List.map parseAnyType |> String.concat " "
+        $"(%s{make}(%s{args}))"
     | _ -> failwithf "Unsupported non-option type: %A" t
 
 and parseAnyType (t : Ast.JType) =
@@ -74,13 +82,21 @@ let generateUnionParser (name : string) (cases : Ast.UnionCase list) = seq {
 }
 
 let run (simpleType : Ast.SimpleType) =
+    let generateFuncDecl (name : string) (typeVars : string list) =
+        let moreParsers =
+            typeVars
+            |> List.map (fun v -> $"parserFor%s{v} : UseData.Json.JsonValue -> '%s{v}")
+            |> String.concat ", "
+        match typeVars with
+        | [] -> $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} ="
+        | _ -> $"static member MakeJsonParser(%s{moreParsers}) : UseData.Json.JsonValue -> %s{name} = fun v ->"
+
     match simpleType with
-    | Ast.Union (name, [], cases) ->
+    | Ast.Union (name, typeVars, cases) ->
         Array.append
-            [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]
+            [| generateFuncDecl name typeVars |]
             (generateUnionParser name cases |> Array.ofSeq)
-    | Ast.Record (name, [], fields) ->
+    | Ast.Record (name, typeVars, fields) ->
         Array.append
-            [| $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} =" |]
+            [| generateFuncDecl name typeVars |]
             (generateRecordParser fields |> Array.ofSeq)
-    | _ -> failwith "Type variables are currently not supported in generator"

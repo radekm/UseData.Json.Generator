@@ -92,3 +92,23 @@ let ``union with associated data`` () =
         |]
     let actual = JsonGenerator.run input
     Assert.That(actual, Is.EqualTo(expected))
+
+[<Test>]
+let ``generic union`` () =
+    let input = Ast.Union ("Node", ["T"], [ { Name = "Leaf"; Types = [Ast.JVar "T"] }
+                                            { Name = "Fork"
+                                              Types =
+                                                  let node = Ast.JApp (Ast.JIdent ["Node"], [Ast.JVar "T"])
+                                                  [node; node]
+                                            } ])
+    let expected =
+        let parsers = "parserForT : UseData.Json.JsonValue -> 'T"
+        let nodeParser = "(Node.MakeJsonParser(parserForT))"
+        [| $"static member MakeJsonParser(%s{parsers}) : UseData.Json.JsonValue -> Node = fun v ->"
+           "    match v |> UJson.field \"Case\" UJson.string with"
+           "    | \"Leaf\" -> v |> UJson.field \"Fields\" (UJson.tuple1 parserForT) |> Leaf"
+           $"    | \"Fork\" -> v |> UJson.field \"Fields\" (UJson.tuple2 %s{nodeParser} %s{nodeParser}) |> Fork"
+           "    | case -> failwithf \"Unrecognized case '%s' in union Node\" case"
+        |]
+    let actual = JsonGenerator.run input
+    Assert.That(actual, Is.EqualTo(expected))
