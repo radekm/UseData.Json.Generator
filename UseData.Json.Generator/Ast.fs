@@ -57,7 +57,7 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                         name.idText, typeVars
                     | _ -> failwithf "Expected type name with single component: %A" typeInfo
                 match simpleRepr with
-                | SynTypeDefnSimpleRepr.Union(_, unionCases, _) ->
+                | SynTypeDefnSimpleRepr.Union (_, unionCases, _) ->
                     unionCases
                     |> List.map (function
                         | SynUnionCase (_, SynIdent (ident, None), SynUnionCaseKind.Fields fields, _, _, _, _) ->
@@ -68,7 +68,10 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                             { Name = ident.idText; Types = types }
                         | case -> failwithf "Union cases like this are not supported: %A" case)
                     |> fun cases -> Union (name, typeVars, cases)
-                | SynTypeDefnSimpleRepr.Enum(enumCases, _) ->
+                // Unions with single case without associated data are special.
+                | SynTypeDefnSimpleRepr.TypeAbbrev (_, SynType.LongIdent (SynLongIdent ([case], _, _)), _) ->
+                    Union (name, typeVars, [ { Name = case.idText; Types = [] } ])
+                | SynTypeDefnSimpleRepr.Enum (enumCases, _) ->
                     failwithf "Enums are not yet implemented: %A" enumCases
                 | SynTypeDefnSimpleRepr.Record (_, recordFields, _) ->
                     recordFields
@@ -78,7 +81,7 @@ let extractTypeInfo (input : ParsedInput) : SimpleType =
                             | None -> failwith "Record field without name"
                             | Some name -> { Name = name.idText; Type = JType.FromSynType tpe })
                     |> fun fields -> Record (name, typeVars, fields)
-                | _ -> failwith "Expected union or enum or record"
+                | x -> failwithf "Expected union or enum or record: %A" x
             | _ -> failwith "Expected simple type"
         | _ -> failwith "Expected single type declaration"
     | ParsedInput.SigFile _ -> failwith "Expected implementation file not signature file"

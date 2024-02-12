@@ -141,3 +141,34 @@ let ``generic record fields are extracted - with two generic parameters`` () =
         Ast.getUntypedTree checker "Temp.fsx" sourceText
         |> Ast.extractTypeInfo
     Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - union with single case without associated data`` = """
+type Singleton = Singleton
+"""
+
+[<Test>]
+let ``union cases are extracted - with single variant`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - union with single case without associated data``
+    let expected =
+        Ast.Union ("Singleton", [], [ { Name = "Singleton"; Types = [] } ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+
+let ``input - generic union with single case without associated data`` = """
+type Singleton<'T> = Singleton
+"""
+
+[<Test>]
+let ``generic union cases are extracted - with single variant`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - generic union with single case without associated data``
+    let expected =
+        Ast.Union ("Singleton", ["T"], [ { Name = "Singleton"; Types = [] } ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
