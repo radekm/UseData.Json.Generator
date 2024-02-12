@@ -104,7 +104,7 @@ let ``generic union`` () =
     let expected =
         let parsers = "parserForT : UseData.Json.JsonValue -> 'T"
         let nodeParser = "(Node.MakeJsonParser(parserForT))"
-        [| $"static member MakeJsonParser(%s{parsers}) : UseData.Json.JsonValue -> Node = fun v ->"
+        [| $"static member MakeJsonParser(%s{parsers}) : UseData.Json.JsonValue -> Node<'T> = fun v ->"
            "    match v |> UJson.field \"Case\" UJson.string with"
            "    | \"Leaf\" -> v |> UJson.field \"Fields\" (UJson.tuple1 parserForT) |> Leaf"
            $"    | \"Fork\" -> v |> UJson.field \"Fields\" (UJson.tuple2 %s{nodeParser} %s{nodeParser}) |> Fork"

@@ -83,13 +83,19 @@ let generateUnionParser (name : string) (cases : Ast.UnionCase list) = seq {
 
 let run (simpleType : Ast.SimpleType) =
     let generateFuncDecl (name : string) (typeVars : string list) =
-        let moreParsers =
-            typeVars
-            |> List.map (fun v -> $"parserFor%s{v} : UseData.Json.JsonValue -> '%s{v}")
-            |> String.concat ", "
         match typeVars with
         | [] -> $"static member ParseJson(v : UseData.Json.JsonValue) : %s{name} ="
-        | _ -> $"static member MakeJsonParser(%s{moreParsers}) : UseData.Json.JsonValue -> %s{name} = fun v ->"
+        | _ ->
+            let moreParsers =
+                typeVars
+                |> Seq.map (fun v -> $"parserFor%s{v} : UseData.Json.JsonValue -> '%s{v}")
+                |> String.concat ", "
+            let result =
+                typeVars
+                |> Seq.map (fun v -> "'" + v)
+                |> String.concat ", "
+                |> fun typeVars -> name + "<" + typeVars + ">"
+            $"static member MakeJsonParser(%s{moreParsers}) : UseData.Json.JsonValue -> %s{result} = fun v ->"
 
     match simpleType with
     | Ast.Union (name, typeVars, cases) ->
