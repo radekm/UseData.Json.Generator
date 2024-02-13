@@ -22,16 +22,17 @@ let rec parseNonOptionType (t : Ast.JType) =
     match t with
     | Ast.JIdent longIdent -> parseSimpleType longIdent
     | Ast.JVar v -> $"parserFor%s{v}"
-    | Ast.JArray (t) ->
-        $"(UJson.map %s{parseAnyType t})"
-    | Ast.JApp (Ast.JIdent ["list"], [t]) ->
-        $"((UJson.map %s{parseAnyType t}) >> Array.toList)"
+    | Ast.JArray t -> $"(UJson.map %s{parseAnyType t})"
+    | Ast.JTuple types ->
+        let args = types |> Seq.map parseAnyType |> String.concat " "
+        $"(UJson.tuple%d{types.Length} %s{args})"
+    | Ast.JApp (Ast.JIdent ["list"], [t]) -> $"((UJson.map %s{parseAnyType t}) >> Array.toList)"
     | Ast.JApp (Ast.JIdent ["voption"], [_])
     | Ast.JApp (Ast.JIdent ["option"], [_]) -> failwithf "Option types are not supported: %A" t
     // Other generic types.
     | Ast.JApp (Ast.JIdent longIdent, types) ->
         let make = longIdent |> String.concat "." |> fun tpe -> tpe + ".MakeJsonParser"
-        let args = types |> List.map parseAnyType |> String.concat " "
+        let args = types |> Seq.map parseAnyType |> String.concat " "
         $"(%s{make}(%s{args}))"
     | _ -> failwithf "Unsupported non-option type: %A" t
 

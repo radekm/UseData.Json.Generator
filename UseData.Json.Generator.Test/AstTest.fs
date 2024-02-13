@@ -157,7 +157,6 @@ let ``union cases are extracted - with single variant`` () =
         |> Ast.extractTypeInfo
     Assert.That(actual, Is.EqualTo(expected))
 
-
 let ``input - generic union with single case without associated data`` = """
 type Singleton<'T> = Singleton
 """
@@ -168,6 +167,27 @@ let ``generic union cases are extracted - with single variant`` () =
     let sourceText = SourceText.ofString ``input - generic union with single case without associated data``
     let expected =
         Ast.Union ("Singleton", ["T"], [ { Name = "Singleton"; Types = [] } ])
+    let actual =
+        Ast.getUntypedTree checker "Temp.fsx" sourceText
+        |> Ast.extractTypeInfo
+    Assert.That(actual, Is.EqualTo(expected))
+
+let ``input - record with tuples`` = """
+type Foo = { A : int * int
+             B : int * string * bool
+           }
+"""
+
+[<Test>]
+let ``tuples`` () =
+    let checker = FSharpChecker.Create()
+    let sourceText = SourceText.ofString ``input - record with tuples``
+    let expected =
+        Ast.Record ("Foo", [], [ { Name = "A"; Type = Ast.JTuple [Ast.JIdent ["int"]; Ast.JIdent ["int"]] }
+                                 { Name = "B"
+                                   Type = Ast.JTuple [ Ast.JIdent ["int"]
+                                                       Ast.JIdent ["string"]
+                                                       Ast.JIdent ["bool"] ] } ])
     let actual =
         Ast.getUntypedTree checker "Temp.fsx" sourceText
         |> Ast.extractTypeInfo

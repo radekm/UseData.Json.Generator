@@ -112,3 +112,16 @@ let ``generic union`` () =
         |]
     let actual = JsonGenerator.run input
     Assert.That(actual, Is.EqualTo(expected))
+
+[<Test>]
+let ``tuples`` () =
+    let input = Ast.Record ("Foo", [], [ { Name = "Bar"
+                                           Type = Ast.JTuple [Ast.JIdent ["int"]; Ast.JIdent ["string"]] }
+                                       ])
+    let expected =
+        [| $"static member ParseJson(v : UseData.Json.JsonValue) : Foo ="
+           "    { Bar = v |> UJson.field \"Bar\" (UJson.tuple2 UJson.int UJson.string)"
+           "    }"
+        |]
+    let actual = JsonGenerator.run input
+    Assert.That(actual, Is.EqualTo(expected))

@@ -9,6 +9,7 @@ type JType =
     | JVar of string
     | JApp of generic:JType * args:JType list
     | JArray of element:JType
+    | JTuple of JType list
 
     static member FromSynType(t : SynType) =
         match t with
@@ -20,6 +21,14 @@ type JType =
             if rank <> 1
             then failwith $"Only rank 1 arrays are supported: %A{t}"
             else JArray (JType.FromSynType element)
+        // Only non-struct tuples.
+        | SynType.Tuple (false, segments, _) ->
+            segments
+            |> List.choose (function
+                | SynTupleTypeSegment.Type t -> Some (JType.FromSynType t)
+                | SynTupleTypeSegment.Star _ -> None  // Skip stars between type names.
+                | segment -> failwith $"Unsupported tuple segment: %A{segment}")
+            |> JType.JTuple
         | _ -> failwith $"Unsupported type: %A{t}"
 
 type UnionCase = { Name : string
