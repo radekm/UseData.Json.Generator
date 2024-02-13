@@ -32,7 +32,7 @@ let rec parseNonOptionType (t : Ast.JType) =
     // Other generic types.
     | Ast.JApp (Ast.JIdent longIdent, types) ->
         let make = longIdent |> String.concat "." |> fun tpe -> tpe + ".MakeJsonParser"
-        let args = types |> Seq.map parseAnyType |> String.concat " "
+        let args = types |> Seq.map parseAnyType |> String.concat ", "
         $"(%s{make}(%s{args}))"
     | _ -> failwithf "Unsupported non-option type: %A" t
 
