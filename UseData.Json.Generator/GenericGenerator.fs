@@ -14,7 +14,7 @@ let run
     let mutable changed = false
     let mutable directiveLine = -1
     let mutable directiveIndent = -1
-    let mutable typeDeclarationLine = -1
+    let mutable typeDeclarationLine = -1  // Starts either with `type` or `and` keyword.
     let mutable typeDeclarationLastLine = -1  // Last non-blank line.
     let mutable i = 0
 
@@ -43,7 +43,7 @@ let run
                     (i + 1) (directiveLine + 1)
             if trimmed.StartsWith "[<" then
                 ()  // Attributes are allowed.
-            if trimmed.StartsWith "type " then
+            if trimmed.StartsWith "type " || trimmed.StartsWith "and " then
                 typeDeclarationLine <- i
                 typeDeclarationLastLine <- i
         // We found both directive and type declaration.
@@ -71,14 +71,14 @@ let run
             typeDeclarationLine <- -1
             typeDeclarationLastLine <- -1
             // Don't increment `i`. Current line is not part of type.
-            // But another directive can start there so we have to process it again.
+            // But another directive can start there, so we have to process it again.
         else
             i <- i + 1
 
     // Opened directive.
     if directiveLine <> -1 then
         if typeDeclarationLine <> -1 then
-            // Blank lines at the end of type are not part of type and we will process them again.
+            // Blank lines at the end of type are not part of type, and we will process them again.
             i <- typeDeclarationLastLine + 1
             changed <- processTypeDeclaration sourceText outputLine typeDeclarationLine i || changed
 
@@ -104,7 +104,20 @@ let processTypeDeclaration
     (toExcl : int) =
 
     let typeDeclarationStr =
-        seq { for i = from to toExcl - 1 do sourceText.GetLineString i }
+        seq {
+            let firstLine = sourceText.GetLineString from
+            let firstLineWithoutIndent = firstLine.TrimStart()
+            if firstLineWithoutIndent.StartsWith "and " then
+                // Replace `and ` by `type `, so type declarations starting with `and `
+                // are successfully parsed in isolation.
+                let indent = firstLine.Length - firstLineWithoutIndent.Length
+                yield firstLine.Substring(0, indent) + "type " + firstLineWithoutIndent.Substring(4)
+            else yield firstLine
+
+            // Emit remaining lines unchanged.
+            for i = from + 1 to toExcl - 1 do
+                yield sourceText.GetLineString i
+        }
         |> String.concat "\n"
     let typeDeclarationSourceText = SourceText.ofString typeDeclarationStr
 
